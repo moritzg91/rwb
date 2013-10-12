@@ -1,0 +1,126 @@
+This directory shows how the tables for the FEC and Geolocation data
+are created and populated.  The actual raw data is not included here,
+but is stored separately.  
+
+Students really only need to concern themselves with the table
+creations done by ora/setup-all.sh and geocode/setup.sql.  These files
+will make clear how the FEC and Geolocation schemas work.  Our FEC
+schemas are very close the data dictionaries provided along with the
+FEC raw data.  You can find both the data dictionaries and the raw
+data at http://www.fec.gov/finance/disclosure/ftpdet.shtml.
+
+All of these tables already exist in the cs339 account, and are fully
+populated.  The point of giving students these files is so they can
+see exactly what the FEC and Geolocation schemas are, and how a data
+import process may be structured.
+
+Folder Structure
+================
+  (root folder)
+  \
+    ora
+    \
+      [table]-import.sh
+      [table]-loader.ctl
+      drop-[table].sql
+      drop-all.sh
+      import-all.sh
+      setup-[table].sql
+      setup-all.sh
+    fec 
+    \
+      [year range]  
+      \
+        [table].txt
+      [table.txt]    DATA IS NOT INCLUDED HERE
+      fetch.sh
+      make-master.sh
+      remove-non-ascii.sh
+      retrieve-data.sh
+      unzipper.sh
+    geo
+    \
+      setup.sql
+      drop.sql
+      geocode.pl
+      test_geocoder.pl
+      README
+     scrap
+     \
+      import-fec.py    
+
+  ora - control files and scripts for importing data into Oracle SQL server
+  fec - FEC data and scripts for importing / preparing said data
+  geo - Scripts for producing geolocation tables for the fec data
+
+Data Files
+==========
+  cm.txt      - Committee Master File
+  cn.txt      - Candidate Master File
+  ccl.txt     - Candidate to Committee Linkage File
+  itcont.txt  - Contributions from Individuals File
+  itpas2.txt  - Contributions to Candidates from Committees
+  itoth.txt   - Any Transaction from One Committee to Another
+
+Instructions
+============
+
+  Setting up Data
+  ---------------
+    If new data needed -
+      cd fec
+      ./retrieve-data.sh
+
+      This will call fetch.sh to fetch all sets of data from 1979-2012, placing them
+      into folders denoting the cycle (e.g. 7980 for 1979-1980), then call
+      unzipper.sh to unzip each archive, and remove the original .zip file
+
+    Then - 
+      cd fec
+      ./make-master.sh
+      ./remove-non-ascii.sh
+
+      This will concatonate all data files into files of the same name located
+      in the root folder, adding data in reverse chronological order (newest
+      first) then remove any non-ascii characters which are found in the files
+      (these lead to errors in importing)
+
+  Setting up the Database
+  -----------------------
+    If previous data exists -
+      cd ora
+      ./dump-all.sh
+
+      This will dump all tables (and associated entries) from the Database
+
+    Then -
+      cd ora
+      ./setup-all.sh
+      ./import-all.sh
+
+      This will set up tables in the database according to schema set out by the
+      FEC, then import data from the 'master' files located in the fec folder
+
+  Adding Geolocation to the Database
+  ----------------------------------
+    If previous data exists - 
+      cd geo
+      sqlplus user/passwd @drop.sql
+    
+      This will dump the geolocation talbes from the Database
+
+    Then -
+      cd geo
+      sqlplus user/passwd @setup.sql
+      ./geolocate.pl    
+   
+      This will set up the geolocation tables in the database, and populate
+      them, attempting to geolocate all entities that are in the imported FEC
+      data.  Note that this process takes up to a day on our current hardware.
+
+
+  Scrap
+  -----
+    import-fec.py is a Python script to import data from each individual cycle, 
+    which results in errors in SQL*Loader, leaving in place due to possible 
+    future code reuse 
