@@ -80,8 +80,9 @@ use Time::ParseDate;
 my $dbuser="mjg839";
 my $dbpasswd="zdu5GU1to";
 
+my $TEST_A;
+my $TEST_C;
 
-#
 # The session cookie will contain the user's name and password so that 
 # he doesn't have to type it again and again. 
 #
@@ -120,6 +121,9 @@ my $logincomplain=0;
 my $action;
 my $run;
 
+my @ALL_CYCLES = sort eval {
+	ExecSQL($dbuser, $dbpasswd, "select distinct cycle from cs339.committee_master","COL"); 
+	};
 
 if (defined(param("act"))) { 
   $action=param("act");
@@ -427,6 +431,8 @@ if ($action eq "near") {
   my $whatparam = param("what");
   my $format = param("format");
   my $cycle = param("cycle");
+  my $cyclefrom = param("cyclefrom");
+  my $cycleto = param("cycleto");
   my %what;
   
   $format = "table" if !defined($format);
@@ -443,7 +449,7 @@ if ($action eq "near") {
 	       
 
   if ($what{committees}) { 
-    my ($str,$error) = Committees($latne,$longne,$latsw,$longsw,$cycle,$format);
+    my ($str,$error) = Committees($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format);
     if (!$error) {
       if ($format eq "table") { 
 	print "<h2>Nearby committees</h2>$str";
@@ -453,7 +459,7 @@ if ($action eq "near") {
     }
   }
   if ($what{candidates}) {
-    my ($str,$error) = Candidates($latne,$longne,$latsw,$longsw,$cycle,$format);
+    my ($str,$error) = Candidates($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format);
     if (!$error) {
       if ($format eq "table") { 
 	print "<h2>Nearby candidates</h2>$str";
@@ -463,7 +469,7 @@ if ($action eq "near") {
     }
   }
   if ($what{individuals}) {
-    my ($str,$error) = Individuals($latne,$longne,$latsw,$longsw,$cycle,$format);
+    my ($str,$error) = Individuals($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format);
     if (!$error) {
       if ($format eq "table") { 
 	print "<h2>Nearby individuals</h2>$str";
@@ -473,7 +479,7 @@ if ($action eq "near") {
     }
   }
   if ($what{opinions}) {
-    my ($str,$error) = Opinions($latne,$longne,$latsw,$longsw,$cycle,$format);
+    my ($str,$error) = Opinions($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format);
     if (!$error) {
       if ($format eq "table") { 
 	print "<h2>Nearby opinions</h2>$str";
@@ -681,7 +687,7 @@ if ($action eq "revoke-perm-user") {
 #
 #
 #
-
+print BuildQueryStr("cycle","or",Cycles_Between("0102","1112"));
 print "</center>" if !$debug;
 
 #
@@ -722,10 +728,14 @@ print end_html;
 # $error false on success, error string on failure
 #
 sub Committees {
-  my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
+  my ($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format) = @_;
+  my @cycles = Cycles_Between($cyclefrom,$cycleto);
+  ################
+  my $cycle_string = BuildQueryStr("cycle","or",Cycles_Between($cyclefrom,$cycleto));
+  
   my @rows;
   eval { 
-    @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cmte_nm, cmte_pty_affiliation, cmte_st1, cmte_st2, cmte_city, cmte_st, cmte_zip from cs339.committee_master natural join cs339.cmte_id_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
+    @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cmte_nm, cmte_pty_affiliation, cmte_st1, cmte_st2, cmte_city, cmte_st, cmte_zip from cs339.committee_master natural join cs339.cmte_id_to_geo where ($cycle_string) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne);
   };
   
   if ($@) { 
@@ -1176,10 +1186,8 @@ BEGIN {
 
 sub PrintCycles {
 my ($select_id) = @_;
-my @rows;
-@rows = sort eval {
-	ExecSQL($dbuser, $dbpasswd, "select distinct cycle from cs339.committee_master","COL"); 
-	};
+my @rows = @ALL_CYCLES;
+
 print "<select id='$select_id'>";
 foreach (@rows) {
 	my $yr_a = substr $_, 0, 2;
@@ -1187,6 +1195,7 @@ foreach (@rows) {
 	print "<option>'" . $yr_a . " - '" . $yr_b . "</option>";
 }
 print "</select>";
+
 return;
 }
 
@@ -1195,30 +1204,17 @@ return;
 #
 sub Cycles_Between {
 	my ($cycle1, $cycle2) = @_;
-	print $cycle1;
-	print "\n";
-	print $cycle2;
-	print "\n";
 	
-	my $counter = 0;
-	my @cycles;
-	while ($cycle1 != $cycle2){
-		
-		$cycles[$counter] = $cycle1;
-		print $cycle1;
-		print "\n";
-		
-		$cycle1 = $cycle1 + 101;
-		
-		if ($cycle1 == 10000){
-			$cycle1 = 9900;
-		} 
-		if ($cycle1 == 10001){
-			$cycle1 = 0001;
-		}
-		
-		$counter = $counter + 1;
+	my ( $cycle1_idx ) = grep { $ALL_CYCLES[$_] eq $cycle1 } 0..$#ALL_CYCLES;
+	my ( $cycle2_idx ) = grep { $ALL_CYCLES[$_] eq $cycle2 } 0..$#ALL_CYCLES;
+	return @ALL_CYCLES[$cycle1_idx .. $cycle2_idx];
+}
+
+sub BuildQueryStr {
+	my ($colname,$sep,@elems) = @_;
+	my $out = "";
+	foreach (@elems) {
+		$out .= "$colname=$_ $sep ";
 	}
-	push @cycles, $cycle2;
-	return @cycles;
+	return (substr $out, 0, -(length($sep)+2));
 }

@@ -113,6 +113,7 @@ function ViewShift()
 	
 	console.log("whatStr = " + whatStr);
 	// debug status flows through by cookie
+	console.log("rwb.pl?act=near&latne="+ne.lat()+"&longne="+ne.lng()+"&latsw="+sw.lat()+"&longsw="+sw.lng()+"&format=raw&cyclefrom=" + cyclefrom + "&cycleto=" + cycleto + "&what="+whatStr);
     $.get("rwb.pl?act=near&latne="+ne.lat()+"&longne="+ne.lng()+"&latsw="+sw.lat()+"&longsw="+sw.lng()+"&format=raw&cyclefrom=" + cyclefrom + "&cycleto=" + cycleto + "&what="+whatStr, NewData);
 }
 
@@ -164,14 +165,6 @@ function formatCycle(raw) {
 	yr_a = raw.substring(1,3);
 	yr_b = raw.substring(7,9);
 	
-	if (yr_a == "00") {
-		yr_a = "";
-		if (yr_b[0] == "0") {
-			yr_b = yr_b[1];
-		}
-	} else if (yr_a[0] == "0") {
-		yr_a = yr_a[1];
-	}
 	return yr_a + yr_b;
 }
 
