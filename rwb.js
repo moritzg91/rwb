@@ -91,8 +91,7 @@ function ViewShift()
 
     color.innerHTML="<b><blink>Querying...("+ne.lat()+","+ne.lng()+") to ("+sw.lat()+","+sw.lng()+")</blink></b>";
     color.style.backgroundColor='white';
-   
-    // debug status flows through by cookie
+	// get the committee/candidate/individual checkbox values and construct the correct query parameters
     var type_filters = [$("#committee_filter"),$("#candidate_filter"),$("#individual_filter")];
     var whatStr = "";
     for (i in type_filters) {
@@ -106,8 +105,15 @@ function ViewShift()
 	} else { //if nothing is selected, default to committees
 		whatStr = "committees";
 	}
+	// get the cycle range from the select boxes and construct the appropriate query parameters
+	var cyclefrom = formatCycle($("#select-cycleFrom option:selected").text());
+	var cycleto = formatCycle($("#select-cycleTo option:selected").text());
+	
+	console.log("from = " + cyclefrom + ", to = " + cycleto);
+	
 	console.log("whatStr = " + whatStr);
-    $.get("rwb.pl?act=near&latne="+ne.lat()+"&longne="+ne.lng()+"&latsw="+sw.lat()+"&longsw="+sw.lng()+"&format=raw&what="+whatStr, NewData);
+	// debug status flows through by cookie
+    $.get("rwb.pl?act=near&latne="+ne.lat()+"&longne="+ne.lng()+"&latsw="+sw.lat()+"&longsw="+sw.lng()+"&format=raw&cyclefrom=" + cyclefrom + "&cycleto=" + cycleto + "&what="+whatStr, NewData);
 }
 
 
@@ -153,4 +159,19 @@ function Start(location)
 
 }
 
+function formatCycle(raw) {
+	// raw format is "'## - '##" 
+	yr_a = raw.substring(1,3);
+	yr_b = raw.substring(7,9);
+	
+	if (yr_a == "00") {
+		yr_a = "";
+		if (yr_b[0] == "0") {
+			yr_b = yr_b[1];
+		}
+	} else if (yr_a[0] == "0") {
+		yr_a = yr_a[1];
+	}
+	return yr_a + yr_b;
+}
 

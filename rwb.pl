@@ -396,9 +396,9 @@ if ($action eq "base") {
   checkbox(-id=>"candidate_filter", -name=>'candidates'),
   checkbox(-id=>"individual_filter", -name=>'individuals'),
   "</td><td>From: ";
-  PrintCycles();
+  PrintCycles("select-cycleFrom");
   print "</td><td>To: ";
-  PrintCycles();
+  PrintCycles("select-cycleTo");
   print "</td></tr><tr><td colspan=3>";
   print submit(-name=>'Filter'), "</td></tr></table>", end_form;
 
@@ -1175,11 +1175,12 @@ BEGIN {
 }
 
 sub PrintCycles {
+my ($select_id) = @_;
 my @rows;
 @rows = sort eval {
 	ExecSQL($dbuser, $dbpasswd, "select distinct cycle from cs339.committee_master","COL"); 
 	};
-print "<select>";
+print "<select id='$select_id'>";
 foreach (@rows) {
 	my $yr_a = substr $_, 0, 2;
 	my $yr_b = substr $_, 2, 2;
