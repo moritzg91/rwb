@@ -1189,3 +1189,36 @@ foreach (@rows) {
 print "</select>";
 return;
 }
+
+#
+# populates an array with all cycles between two given cycles
+#
+sub Cycles_Between {
+	my ($cycle1, $cycle2) = @_;
+	print $cycle1;
+	print "\n";
+	print $cycle2;
+	print "\n";
+	
+	my $counter = 0;
+	my @cycles;
+	while ($cycle1 != $cycle2){
+		
+		$cycles[$counter] = $cycle1;
+		print $cycle1;
+		print "\n";
+		
+		$cycle1 = $cycle1 + 101;
+		
+		if ($cycle1 == 10000){
+			$cycle1 = 9900;
+		} 
+		if ($cycle1 == 10001){
+			$cycle1 = 0001;
+		}
+		
+		$counter = $counter + 1;
+	}
+	push @cycles, $cycle2;
+	return @cycles;
+}
