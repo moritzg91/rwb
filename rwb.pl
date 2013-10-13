@@ -77,8 +77,8 @@ use Time::ParseDate;
 #
 # You need to override these for access to your database
 #
-my $dbuser="CHANGEME";
-my $dbpasswd="CHANGEME";
+my $dbuser="mjg839";
+my $dbpasswd="zdu5GU1to";
 
 
 #
@@ -389,6 +389,18 @@ if ($action eq "base") {
     }
     print "<p><a href=\"rwb.pl?act=logout&run=1\">Logout</a></p>";
   }
+  ## Selection options
+  print start_form(-name=>'ApplyFilters'), "<table><tr><td>Display contributions for...</td><td colspan=2>...for these election cycles</td>", 
+  "<tr><td>", 
+  checkbox(-id=>"committee_filter", -name=>'committees'),
+  checkbox(-id=>"candidate_filter", -name=>'candidates'),
+  checkbox(-id=>"individual_filter", -name=>'individuals'),
+  "</td><td>From: ";
+  PrintCycles();
+  print "</td><td>To: ";
+  PrintCycles();
+  print "</td></tr><tr><td colspan=3>";
+  print submit(-name=>'Filter'), "</td></tr></table>", end_form;
 
 }
 
@@ -1162,3 +1174,17 @@ BEGIN {
   }
 }
 
+sub PrintCycles {
+my @rows;
+@rows = sort eval {
+	ExecSQL($dbuser, $dbpasswd, "select distinct cycle from cs339.committee_master","COL"); 
+	};
+print "<select>";
+foreach (@rows) {
+	my $yr_a = substr $_, 0, 2;
+	my $yr_b = substr $_, 2, 2;
+	print "<option>'" . $yr_a . " - '" . $yr_b . "</option>";
+}
+print "</select>";
+return;
+}

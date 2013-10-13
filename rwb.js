@@ -18,20 +18,22 @@ if (navigator.geolocation)  {
 function UpdateMapById(id, tag) {
 
     var target = document.getElementById(id);
-    var data = target.innerHTML;
+    if (target) {
+		var data = target.innerHTML;
 
-    var rows  = data.split("\n");
-   
-    for (i in rows) {
-	var cols = rows[i].split("\t");
-	var lat = cols[0];
-	var long = cols[1];
+		var rows  = data.split("\n");
+	   
+		for (i in rows) {
+		var cols = rows[i].split("\t");
+		var lat = cols[0];
+		var long = cols[1];
 
-	markers.push(new google.maps.Marker({ map:map,
-						    position: new google.maps.LatLng(lat,long),
-						    title: tag+"\n"+cols.join("\n")}));
-	
-    }
+		markers.push(new google.maps.Marker({ map:map,
+								position: new google.maps.LatLng(lat,long),
+								title: tag+"\n"+cols.join("\n")}));
+		
+		}
+	}
 }
 
 function ClearMarkers()
@@ -53,8 +55,8 @@ function UpdateMap()
     ClearMarkers();
 
     UpdateMapById("committee_data","COMMITTEE");
-    //UpdateMapById("candidate_data","CANDIDATE");
-    //UpdateMapById("individual_data", "INDIVIDUAL");
+    UpdateMapById("candidate_data","CANDIDATE");
+    UpdateMapById("individual_data", "INDIVIDUAL");
     //UpdateMapById("opinion_data","OPINION");
 
 
@@ -91,7 +93,21 @@ function ViewShift()
     color.style.backgroundColor='white';
    
     // debug status flows through by cookie
-    $.get("rwb.pl?act=near&latne="+ne.lat()+"&longne="+ne.lng()+"&latsw="+sw.lat()+"&longsw="+sw.lng()+"&format=raw&what=committees,candidates", NewData);
+    var type_filters = [$("#committee_filter"),$("#candidate_filter"),$("#individual_filter")];
+    var whatStr = "";
+    for (i in type_filters) {
+			type = type_filters[i];
+			if (type.is(":checked")) {
+					whatStr += type.attr("name") + ",";
+			}
+	}
+	if (whatStr != "") {
+			whatStr = whatStr.substring(0,whatStr.length - 1);
+	} else { //if nothing is selected, default to committees
+		whatStr = "committees";
+	}
+	console.log("whatStr = " + whatStr);
+    $.get("rwb.pl?act=near&latne="+ne.lat()+"&longne="+ne.lng()+"&latsw="+sw.lat()+"&longsw="+sw.lng()+"&format=raw&what="+whatStr, NewData);
 }
 
 
