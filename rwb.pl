@@ -426,7 +426,8 @@ if ($action eq "near") {
   my $longsw = param("longsw");
   my $whatparam = param("what");
   my $format = param("format");
-  my $cycle = param("cycle");
+  my $cyclefrom = param("cyclefrom");
+  my $cycleto = param("cycleto");
   my %what;
   
   $format = "table" if !defined($format);
@@ -443,7 +444,7 @@ if ($action eq "near") {
 	       
 
   if ($what{committees}) { 
-    my ($str,$error) = Committees($latne,$longne,$latsw,$longsw,$cycle,$format);
+    my ($str,$error) = Committees($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format);
     if (!$error) {
       if ($format eq "table") { 
 	print "<h2>Nearby committees</h2>$str";
@@ -453,7 +454,7 @@ if ($action eq "near") {
     }
   }
   if ($what{candidates}) {
-    my ($str,$error) = Candidates($latne,$longne,$latsw,$longsw,$cycle,$format);
+    my ($str,$error) = Candidates($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format);
     if (!$error) {
       if ($format eq "table") { 
 	print "<h2>Nearby candidates</h2>$str";
@@ -463,7 +464,7 @@ if ($action eq "near") {
     }
   }
   if ($what{individuals}) {
-    my ($str,$error) = Individuals($latne,$longne,$latsw,$longsw,$cycle,$format);
+    my ($str,$error) = Individuals($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format);
     if (!$error) {
       if ($format eq "table") { 
 	print "<h2>Nearby individuals</h2>$str";
@@ -473,7 +474,7 @@ if ($action eq "near") {
     }
   }
   if ($what{opinions}) {
-    my ($str,$error) = Opinions($latne,$longne,$latsw,$longsw,$cycle,$format);
+    my ($str,$error) = Opinions($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format);
     if (!$error) {
       if ($format eq "table") { 
 	print "<h2>Nearby opinions</h2>$str";
@@ -722,10 +723,23 @@ print end_html;
 # $error false on success, error string on failure
 #
 sub Committees {
-  my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
+  my ($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format) = @_;
   my @rows;
+  
+  my @cycles = cycles_between($cyclefrom, $cycleto);
+  my $cycle_string = "";
+  
+  foreach $x (@cycles) {
+	  
+	  if ($x eq $cycleto) {
+		  $cycle_string += " cycle= " + $x;
+	  } else {
+	  $cycle_string += " cycle= " + $x + " or ";
+		}
+	}
+  
   eval { 
-    @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cmte_nm, cmte_pty_affiliation, cmte_st1, cmte_st2, cmte_city, cmte_st, cmte_zip from cs339.committee_master natural join cs339.cmte_id_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
+    @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cmte_nm, cmte_pty_affiliation, cmte_st1, cmte_st2, cmte_city, cmte_st, cmte_zip from cs339.committee_master natural join cs339.cmte_id_to_geo where ? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle_string,$latsw,$latne,$longsw,$longne);
   };
   
   if ($@) { 
