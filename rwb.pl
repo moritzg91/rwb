@@ -674,6 +674,88 @@ if ($action eq "revoke-perm-user") {
   print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
 }
 
+#
+#
+#
+#invite user action
+#
+#
+#
+#
+if ($action eq "invite-user") { 
+    if (!UserCan($user,"add-users") && !UserCan($user,"manage-users") && !UserCan($user, "invite-users")) { 
+		print h2('You do not have the required permissions to invite users.');
+	} else {
+		if (!$run) {
+			print start_form(-name=>'InviteUser'),
+				h2('Invite User'),
+					"Email: ", textfield(-name=>'email'),
+						p,
+							hidden(-name=>'run',-default=>['1']),
+								hidden(-name=>'act',-default=>['invite-user']),
+									submit,
+										end-form,
+											hr;
+		} else {
+			my $email=param('email');
+			my $error;
+			$error=UserInvite($email);
+			if ($error) {
+		print "Can't invite user because: $error";
+			} else {
+		print "Invited user whose email is $email as referred by $user\n";
+			}
+		}
+	}
+	print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
+}
+
+#
+#
+#
+#register action
+#once user clicks link from email
+#this action takes over
+#
+#
+if ($action eq "register") {
+	
+	$used = eval { ExecSQL($dbuser,$dbpasswd,
+		 "select (used) from rwb_uuid where id=$uuid",undef,$uuid1, $used);
+	};
+	
+	if ($used == 1) {
+		print h2('This link has already been used to register, sorry!');
+	} else {
+		if (!$run) {
+			print start_form(-name=>'register'),
+				h2('Register'),
+					"E-mail: ", textfield(-name=>'e-mail'),
+						p,
+							"Username: ", textfield(-name=>'username'),
+								p,
+									"Password: ", textfield(-name=>'password'),
+										p,
+											hidden(-name=>'run',-default=>['1']),
+												hidden(-name=>'act',-default=>['invite-user']),
+													submit,
+														end-form,
+															hr;
+		} else {
+			my $username=param('username');
+			my $password=param('password');
+			my $email=param('email');
+			my $error;
+			$error=UserAdd($username, $password, $email, $refer);
+			if ($error) {
+				print "Could not complete registration because: $error";
+			} else {
+				print "Your registration is complete!\n";
+				}
+			}
+	}
+	print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
+}
 
 
 #
@@ -1215,4 +1297,48 @@ sub BuildQueryStr {
 		$out .= "$colname=$_ $sep ";
 	}
 	return (substr $out, 0, -(length($sep)+2));
+}
+
+sub UserInvite {
+	
+	my ($email) = @_;
+	
+	#
+	#creating unique id
+	#using system time for this, might need something more unique
+	$uuid = time();
+	$used = 0;
+	
+	
+	#
+	#creating unique link
+	#
+	$link = "http://murphy.wot.eecs.northwestern.edu/~mjg839/rwb/rwb.pl?action=register&refer=$user&uuid=$uuid";
+	
+	
+	#
+	#inserting the unique id into our database as not having been used
+	#
+	eval { ExecSQL($dbuser,$dbpasswd,
+		 "insert into rwb_uuid (id, used) values (?,?)",undef,$uuid1, $used);
+	};
+	
+	# creating email text
+	$subject = "New-RWB-Account";
+	$content = "Click the link below to setup your account. \n\n\n $link";
+	
+	
+	#
+	# This is the magic.  It means "run mail -s ..." and let me 
+	# write to its input, which I will call MAIL:
+	#
+	open(MAIL,"| mail -s $subject $email") or die "Can't run mail\n";
+	#
+	# And here we write to it
+	#
+	print MAIL $content;
+	#
+	# And then close it, resulting in the email being sent
+	#
+	close(MAIL);				
 }
