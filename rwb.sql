@@ -199,6 +199,14 @@ INSERT INTO rwb_permissions (name,action) VALUES('root','give-opinion-data');
 -- A user that's been added will be able to do all but manage-users
 --
 
+--
+-- create table to store unique ids for registration
+--
+create table rwb_uuid (
+	id VARCHAR(64) NOT NULL primary key
+	used NUMBER
+);
+
 
 
 quit;
