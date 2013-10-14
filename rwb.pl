@@ -80,9 +80,6 @@ use Time::ParseDate;
 my $dbuser="mjg839";
 my $dbpasswd="zdu5GU1to";
 
-my $TEST_A;
-my $TEST_C;
-
 # The session cookie will contain the user's name and password so that 
 # he doesn't have to type it again and again. 
 #
@@ -393,18 +390,8 @@ if ($action eq "base") {
     }
     print "<p><a href=\"rwb.pl?act=logout&run=1\">Logout</a></p>";
   }
-  ## Selection options
-  print start_form(-name=>'ApplyFilters'), "<table><tr><td>Display contributions for...</td><td colspan=2>...for these election cycles</td>", 
-  "<tr><td>", 
-  checkbox(-id=>"committee_filter", -name=>'committees'),
-  checkbox(-id=>"candidate_filter", -name=>'candidates'),
-  checkbox(-id=>"individual_filter", -name=>'individuals'),
-  "</td><td>From: ";
-  PrintCycles("select-cycleFrom");
-  print "</td><td>To: ";
-  PrintCycles("select-cycleTo");
-  print "</td></tr><tr><td colspan=3>";
-  print submit(-name=>'Filter'), "</td></tr></table>", end_form;
+  ## Create HTML for filter options
+  BuildFilterForm();
 
 }
 
@@ -432,6 +419,7 @@ if ($action eq "near") {
   my $format = param("format");
   my $cyclefrom = param("cyclefrom");
   my $cycleto = param("cycleto");
+  my $cycles = param("cycles");
   my %what;
   
   $format = "table" if !defined($format);
@@ -447,7 +435,7 @@ if ($action eq "near") {
 	       
 
   if ($what{committees}) { 
-    my ($str,$error) = Committees($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format);
+    my ($str,$error) = Committees($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$cycles,$format);
     if (!$error) {
       if ($format eq "table") { 
 	print "<h2>Nearby committees</h2>$str";
@@ -457,7 +445,7 @@ if ($action eq "near") {
     }
   }
   if ($what{candidates}) {
-    my ($str,$error) = Candidates($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format);
+    my ($str,$error) = Candidates($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$cycles,$format);
     if (!$error) {
       if ($format eq "table") { 
 	print "<h2>Nearby candidates</h2>$str";
@@ -467,7 +455,7 @@ if ($action eq "near") {
     }
   }
   if ($what{individuals}) {
-    my ($str,$error) = Individuals($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format);
+    my ($str,$error) = Individuals($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$cycles,$format);
     if (!$error) {
       if ($format eq "table") { 
 	print "<h2>Nearby individuals</h2>$str";
@@ -477,7 +465,7 @@ if ($action eq "near") {
     }
   }
   if ($what{opinions}) {
-    my ($str,$error) = Opinions($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format);
+    my ($str,$error) = Opinions($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$cycles,$format);
     if (!$error) {
       if ($format eq "table") { 
 	print "<h2>Nearby opinions</h2>$str";
@@ -685,7 +673,7 @@ if ($action eq "revoke-perm-user") {
 #
 #
 #
-print BuildQueryStr("cycle","or",Cycles_Between("0102","1112"));
+
 print "</center>" if !$debug;
 
 #
@@ -726,9 +714,13 @@ print end_html;
 # $error false on success, error string on failure
 #
 sub Committees {
-  my ($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$format) = @_;
-  
-  my $cycle_string = BuildQueryStr("cycle","or",Cycles_Between($cyclefrom,$cycleto));
+  my ($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$cycles,$format) = @_;
+  my $cycle_string = "";
+  if (defined($cycles)) {
+		$cycle_string = BuildQueryStr("cycle","or",split("-",$cycles));
+	} else {
+		$cycle_string = BuildQueryStr("cycle","or",Cycles_Between($cyclefrom,$cycleto));
+	}
 
   my @rows;
   
@@ -756,10 +748,17 @@ sub Committees {
 # $error false on success, error string on failure
 #
 sub Candidates {
-  my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
+  my ($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$cycles,$format) = @_;
+  my $cycle_string = "";
+  if (defined($cycles)) {
+		$cycle_string = BuildQueryStr("cycle","or",split("-",$cycles));
+	} else {
+		$cycle_string = BuildQueryStr("cycle","or",Cycles_Between($cyclefrom,$cycleto));
+	}
+	
   my @rows;
   eval { 
-    @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cand_name, cand_pty_affiliation, cand_st1, cand_st2, cand_city, cand_st, cand_zip from cs339.candidate_master natural join cs339.cand_id_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
+    @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cand_name, cand_pty_affiliation, cand_st1, cand_st2, cand_city, cand_st, cand_zip from cs339.candidate_master natural join cs339.cand_id_to_geo where ($cycle_string) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne);
   };
   
   if ($@) { 
@@ -785,10 +784,17 @@ sub Candidates {
 # $error false on success, error string on failure
 #
 sub Individuals {
-  my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
+  my ($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$cycles,$format) = @_;
+  my $cycle_string = "";
+  if (defined($cycles)) {
+		$cycle_string = BuildQueryStr("cycle","or",split("-",$cycles));
+	} else {
+		$cycle_string = BuildQueryStr("cycle","or",Cycles_Between($cyclefrom,$cycleto));
+	}
+	
   my @rows;
   eval { 
-    @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, name, city, state, zip_code, employer, transaction_amnt from cs339.individual natural join cs339.ind_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
+    @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, name, city, state, zip_code, employer, transaction_amnt from cs339.individual natural join cs339.ind_to_geo where ($cycle_string) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne);
   };
   
   if ($@) { 
@@ -812,7 +818,8 @@ sub Individuals {
 # $error false on success, error string on failure
 #
 sub Opinions {
-  my ($latne, $longne, $latsw, $longsw, $cycle,$format) = @_;
+  my ($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$cycles,$format) = @_;
+	
   my @rows;
   eval { 
     @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, color from rwb_opinions where latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne);
@@ -1182,7 +1189,7 @@ BEGIN {
   }
 }
 
-sub PrintCycles {
+sub PrintCycleSelect {
 my ($select_id) = @_;
 my @rows = @ALL_CYCLES;
 
@@ -1197,6 +1204,18 @@ print "</select>";
 return;
 }
 
+sub PrintCycleList {
+	my $ct = 0;
+foreach (@ALL_CYCLES) {
+	if ($ct % 6 == 0) {
+		print "<br />";
+	}
+	my $yr_a = substr $_, 0, 2;
+	my $yr_b = substr $_, 2, 2;
+	print "<input type='checkbox' value='$_' class='cycle-select-checkbox'>'$yr_a - '$yr_b</input>";
+	$ct++;
+}	
+}
 #
 # populates an array with all cycles between two given cycles
 #
@@ -1215,4 +1234,20 @@ sub BuildQueryStr {
 		$out .= "$colname=$_ $sep ";
 	}
 	return (substr $out, 0, -(length($sep)+2));
+}
+
+sub BuildFilterForm {
+	print "<table id='filter-table'><tr><td>Display contributions for...</td><td>...for these election cycles</td>", 
+	"<tr><td>", 
+	checkbox(-id=>"committee_filter", -name=>'committees'),
+	checkbox(-id=>"candidate_filter", -name=>'candidates'),
+	checkbox(-id=>"individual_filter", -name=>'individuals'),
+	"</td><td style='height:100px;'><div id='toggle-list-or-range' value='range'>Select from list</div>",
+	"<div id='select-cycle-range' class='div-unhidden'><h6>From: </h6>";
+	PrintCycleSelect("select-cycleFrom");
+	print "<h6>To: </h6>";
+	PrintCycleSelect("select-cycleTo");
+	print "</div><div id='select-cycle-list' class='div-hidden'>";
+	PrintCycleList();
+	print "</div></td></tr></table>";	
 }

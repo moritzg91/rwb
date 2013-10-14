@@ -106,15 +106,17 @@ function ViewShift()
 		whatStr = "committees";
 	}
 	// get the cycle range from the select boxes and construct the appropriate query parameters
-	var cyclefrom = formatCycle($("#select-cycleFrom option:selected").text());
-	var cycleto = formatCycle($("#select-cycleTo option:selected").text());
-	
-	console.log("from = " + cyclefrom + ", to = " + cycleto);
-	
-	console.log("whatStr = " + whatStr);
-	// debug status flows through by cookie
-	console.log("rwb.pl?act=near&latne="+ne.lat()+"&longne="+ne.lng()+"&latsw="+sw.lat()+"&longsw="+sw.lng()+"&format=raw&cyclefrom=" + cyclefrom + "&cycleto=" + cycleto + "&what="+whatStr);
-    $.get("rwb.pl?act=near&latne="+ne.lat()+"&longne="+ne.lng()+"&latsw="+sw.lat()+"&longsw="+sw.lng()+"&format=raw&cyclefrom=" + cyclefrom + "&cycleto=" + cycleto + "&what="+whatStr, NewData);
+	if ($('#toggle-list-or-range').attr('value') == 'range') {
+		var cyclefrom = formatCycle($("#select-cycleFrom option:selected").text());
+		var cycleto = formatCycle($("#select-cycleTo option:selected").text());
+
+		console.log("rwb.pl?act=near&latne="+ne.lat()+"&longne="+ne.lng()+"&latsw="+sw.lat()+"&longsw="+sw.lng()+"&format=raw&cyclefrom=" + cyclefrom + "&cycleto=" + cycleto + "&what="+whatStr);
+		$.get("rwb.pl?act=near&latne="+ne.lat()+"&longne="+ne.lng()+"&latsw="+sw.lat()+"&longsw="+sw.lng()+"&format=raw&cyclefrom=" + cyclefrom + "&cycleto=" + cycleto + "&what="+whatStr, NewData);
+	} else {
+		cycles = getSelectedCycles();
+		console.log("rwb.pl?act=near&latne="+ne.lat()+"&longne="+ne.lng()+"&latsw="+sw.lat()+"&longsw="+sw.lng()+"&format=raw&cycles=" + cycles + "&what="+whatStr);
+		$.get("rwb.pl?act=near&latne="+ne.lat()+"&longne="+ne.lng()+"&latsw="+sw.lat()+"&longsw="+sw.lng()+"&format=raw&cycles=" + cycles + "&what="+whatStr, NewData);
+	}
 }
 
 
@@ -168,3 +170,29 @@ function formatCycle(raw) {
 	return yr_a + yr_b;
 }
 
+var SELECTED_CYCLES = "";
+function getSelectedCycles() {
+	SELECTED_CYCLES = "";
+	$('#select-cycle-list').children().each(function() {
+		if ($(this).is(":checked")) {
+			console.log($(this).attr('value'));
+			SELECTED_CYCLES += $(this).attr('value') + "-";
+		}
+	});
+	return SELECTED_CYCLES.substring(0,SELECTED_CYCLES.length - 1);
+}
+
+$(document).ready(function() {
+	$('#toggle-list-or-range').click(function() {
+		$('#select-cycle-list').toggleClass('div-hidden div-unhidden');
+		$('#select-cycle-range').toggleClass('div-hidden div-unhidden');
+		btn = $('#toggle-list-or-range');
+		if (btn.attr('value') == 'range') {
+			$('#toggle-list-or-range').attr('value','list');
+			$('#toggle-list-or-range').html("Select from range");
+		} else {
+			$('#toggle-list-or-range').attr('value','range');
+			$('#toggle-list-or-range').html("Select from list");
+		}
+	});
+});

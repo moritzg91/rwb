@@ -186,3 +186,33 @@ font[size=+4] {
  font-size: 300%;
  }
 
+.div-hidden {
+	display:none;
+}
+.div-unhidden {
+	display:auto;
+	height:130px;
+}
+
+#toggle-list-or-range {
+	float:top;
+	background-color:gray;
+	border:1px solid black;
+	width:100%;
+}
+#toggle-list-or-range:hover {
+	background-color:cyan;
+}
+#filter-table tr td {
+	width:50%;
+}
+#select-cycle-list {
+	float:top;
+}
+.cycle-select-checkbox {
+	margin:10px;
+}
+
+h6 {
+	margin:3px;
+}
