@@ -733,12 +733,44 @@ if ($action eq "register") {
 			if ($error) {
 				print "Could not complete registration because: $error";
 			} else {
-				print "Your registration is complete!\n";
+				
+				my $error1 = giveuserperm($username,'invite-users');
+				my $error2 = giveuserperm($username,'add-users');
+				my $error3 = giveuserperm($username,'query-fec-data');
+				my $error4 = giveuserperm($username,'query-cs-ind-data');
+				my $error6 = giveuserperm($username,'query-opinion-data');
+				my $error7 = giveuserperm($username,'give-cs-ind-data');
+				my $error8 = giveuserperm($username,'give-opinion-data');
+				if ($error1) { 
+					print "Can't add a permission to user because: $error1";
+				} else if ($error2) {
+					print "Can't add a permission to user because: $error2";
+				} else if ($error3) {
+					print "Can't add a permission to user because: $error3";
+				} else if ($error4) {
+					print "Can't add a permission to user because: $error4";
+				} else if ($error5) {
+					print "Can't add a permission to user because: $error5";
+				} else if ($error6) {
+					print "Can't add a permission to user because: $error6";
+				} else if ($error7) {
+					print "Can't add a permission to user because: $error7";
+				} else if ($error8) {
+					print "Can't add a permission to user because: $error8";
+				} else {
+					print "Your registration is complete!\n";
+					
+					###INVALIDATE UUID HERE
+					eval {ExecSQL($dbuser,$dbpasswd,
+							"update rwb_uuid set used = 1 where uuid = ?",undef,$uuid);
+					}
 				}
 			}
-	print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
+		}
 	}
+	print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
 }
+
 
 
 #
