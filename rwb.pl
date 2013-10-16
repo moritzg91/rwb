@@ -95,17 +95,23 @@ my $cookiename="RWBSession";
 #
 my $debugcookiename="RWBDebug";
 
+# Yet another cookie to keep track of user's position
+my $locationcookiename="Location";
+
 #
 # Get the session input and debug cookies, if any
 #
 my $inputcookiecontent = cookie($cookiename);
 my $inputdebugcookiecontent = cookie($debugcookiename);
 
+my $inputlocationcookiecontent = cookie($locationcookiename);
+
 #
 # Will be filled in as we process the cookies and paramters
 #
 my $outputcookiecontent = undef;
 my $outputdebugcookiecontent = undef;
+
 my $deletecookie=0;
 my $user = undef;
 my $password = undef;
@@ -121,6 +127,10 @@ my $run;
 my @ALL_CYCLES = sort eval {
 	ExecSQL($dbuser, $dbpasswd, "select distinct cycle from cs339.committee_master","COL"); 
 	};
+my %PARTY_TO_COLOR = ( 	'Republican' => 1,
+						'Democrat' => -1,
+						'Undecided' => 0,
+					);
 
 if (defined(param("act"))) { 
   $action=param("act");
@@ -372,7 +382,7 @@ if ($action eq "base") {
   } else {
     print "<p>You are logged in as $user and can do the following:</p>";
     if (UserCan($user,"give-opinion-data")) {
-      print "<p><a href=\"rwb.pl?act=give-opinion-data\">Give Opinion Of Current Location</a></p>";
+      print "<p><a id='give-opinion-link' href=\"rwb.pl?act=give-opinion-data\">Give Opinion Of Current Location</a></p>";
     }
     if (UserCan($user,"give-cs-ind-data")) {
       print "<p><a href=\"rwb.pl?act=give-cs-ind-data\">Geolocate Individual Contributors</a></p>";
@@ -477,7 +487,38 @@ if ($action eq "near") {
 }
 
 if ($action eq "give-opinion-data") { 
-  print h2("Giving Location Opinion Data Is Unimplemented");
+	my $run = param('run');
+	my $party = param('party_affiliation');
+	my ($lat,$lng) = (undef,undef);
+	if (defined($inputlocationcookiecontent)) { 
+		# Has cookie, let's decode it
+		($lat,$lng) = split(/\//,$inputlocationcookiecontent);
+	}
+	
+	if (!$run) {
+		print h2("Select your affiliation");
+		print start_form(-name-'GiveOpinion'),
+			radio_group(-name=>'party_affiliation', -values=>['Republican','Democrat','Undecided']),
+				hidden(-name=>'run',-default=>['1']),
+					hidden(-name=>'run',-default=>['1']),
+						hidden(-name=>'lat',-default=>[param('lat')]),
+							hidden(-name=>'lng',-default=>[param('lng')]),
+								hidden(-name=>'act',-default=>['give-opinion-data']);
+		print p("On clicking submit, a pin marking your current location and selected political affiliation will be added to the map.");
+		print submit, end_form;
+		print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
+	} else {
+		if (defined($lat) && defined($lng)) {
+			eval { 
+				ExecSQL($dbuser,$dbpasswd,"insert into rwb_opinions (submitter,color,latitude,longitude) values (?,?,?,?)",undef,$user,$PARTY_TO_COLOR{$party},$lat,$lng);
+			};
+			print "$user, $PARTY_TO_COLOR{$party},$lat,$lng";
+			print h2("Thank you. Your opinion has been recorded at ($lat, $lng).");
+		} else {
+			print "<p>Oops, couldn't get your location. Are cookies enabled?</p>";
+		}
+		print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
+	}
 }
 
 if ($action eq "give-cs-ind-data") { 
@@ -728,42 +769,37 @@ if ($action eq "register") {
 			my $password=param('password');
 			my $email=param('email');
 			my $refer=param('refer');
-			my $error;
-			$error=UserAdd($username, $password, $email, $refer);
+			my $error = UserAdd($username, $password, $email, $refer);
 			if ($error) {
 				print "Could not complete registration because: $error";
 			} else {
-				
 				my $error1 = giveuserperm($username,'invite-users');
 				my $error2 = giveuserperm($username,'add-users');
 				my $error3 = giveuserperm($username,'query-fec-data');
 				my $error4 = giveuserperm($username,'query-cs-ind-data');
-				my $error6 = giveuserperm($username,'query-opinion-data');
-				my $error7 = giveuserperm($username,'give-cs-ind-data');
-				my $error8 = giveuserperm($username,'give-opinion-data');
+				my $error5 = giveuserperm($username,'query-opinion-data');
+				my $error6 = giveuserperm($username,'give-cs-ind-data');
+				my $error7 = giveuserperm($username,'give-opinion-data');
 				if ($error1) { 
 					print "Can't add a permission to user because: $error1";
-				} else if ($error2) {
+				} elsif ($error2) {
 					print "Can't add a permission to user because: $error2";
-				} else if ($error3) {
+				} elsif ($error3) {
 					print "Can't add a permission to user because: $error3";
-				} else if ($error4) {
+				} elsif ($error4) {
 					print "Can't add a permission to user because: $error4";
-				} else if ($error5) {
+				} elsif ($error5) {
 					print "Can't add a permission to user because: $error5";
-				} else if ($error6) {
+				} elsif ($error6) {
 					print "Can't add a permission to user because: $error6";
-				} else if ($error7) {
+				} elsif ($error7) {
 					print "Can't add a permission to user because: $error7";
-				} else if ($error8) {
-					print "Can't add a permission to user because: $error8";
 				} else {
 					print "Your registration is complete!\n";
-					
+				}
 					###INVALIDATE UUID HERE
-					eval {ExecSQL($dbuser,$dbpasswd,
-							"update rwb_uuid set used = 1 where uuid = ?",undef,$uuid);
-					}
+				eval {ExecSQL($dbuser,$dbpasswd,
+						"update rwb_uuid set used = 1 where uuid = ?",undef,$uuid);
 				}
 			}
 		}
@@ -1351,7 +1387,8 @@ sub BuildFilterForm {
 	checkbox(-id=>"committee_filter", -name=>'committees'),
 	checkbox(-id=>"candidate_filter", -name=>'candidates'),
 	checkbox(-id=>"individual_filter", -name=>'individuals'),
-	"</td><td style='height:100px;'><div id='toggle-list-or-range' value='range'>Select from list</div>",
+	checkbox(-id=>"opinions_filter", -name=>'opinions'),
+	"</td><td style='height:100px;'><div id='toggle-list-or-range' value='range'>Select from list (click to toggle)</div>",
 	"<div id='select-cycle-range' class='div-unhidden'><h6>From: </h6>";
 	PrintCycleSelect("select-cycleFrom");
 	print "<h6>To: </h6>";

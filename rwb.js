@@ -92,7 +92,7 @@ function ViewShift()
     color.innerHTML="<b><blink>Querying...("+ne.lat()+","+ne.lng()+") to ("+sw.lat()+","+sw.lng()+")</blink></b>";
     color.style.backgroundColor='white';
 	// get the committee/candidate/individual checkbox values and construct the correct query parameters
-    var type_filters = [$("#committee_filter"),$("#candidate_filter"),$("#individual_filter")];
+    var type_filters = [$("#committee_filter"),$("#candidate_filter"),$("#individual_filter"),$("#opinions_filter")];
     var whatStr = "";
     for (i in type_filters) {
 			type = type_filters[i];
@@ -127,6 +127,8 @@ function Reposition(pos)
 
     map.setCenter(new google.maps.LatLng(lat,long));
     usermark.setPosition(new google.maps.LatLng(lat,long));
+    
+    document.cookie = 'Location=' + lat + '/' + long;
 }
 
 
@@ -147,7 +149,8 @@ function Start(location)
   usermark = new google.maps.Marker({ map:map,
 					    position: new google.maps.LatLng(lat,long),
 					    title: "You are here"});
-
+  document.cookie = 'Location=' + lat + '/' + long;
+  
   markers = new Array;
 
   var color = document.getElementById("color");
@@ -189,10 +192,10 @@ $(document).ready(function() {
 		btn = $('#toggle-list-or-range');
 		if (btn.attr('value') == 'range') {
 			$('#toggle-list-or-range').attr('value','list');
-			$('#toggle-list-or-range').html("Select from range");
+			$('#toggle-list-or-range').html("Select from range (click to toggle)");
 		} else {
 			$('#toggle-list-or-range').attr('value','range');
-			$('#toggle-list-or-range').html("Select from list");
+			$('#toggle-list-or-range').html("Select from list (click to toggle)");
 		}
 	});
 });
