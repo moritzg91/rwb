@@ -1143,7 +1143,14 @@ sub Opinions {
 	} elsif ($diff < 0) {
 		$color = 'blue';
 	}
-	my $text = "<span>Total Republican Opinions: $rep_total\$   </span><span>Total Democrat Opinions: $dem_total\$</span>";
+	
+	my @stats;
+	eval { @stats = ExecSQL($dbuser, $dbpasswd, "select avg(color), stddev(color) from rwb_opinions where latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+	my $rowref_3 = @stats[0];
+	my $avg = @{$rowref_3}[0];
+	my $stddev = @{$rowref_3}[1];
+	
+	my $text = "<span>Total Republican Opinions: $rep_total   </span><span>Total Democrat Opinions: $dem_total  </span><span>[AVG: $avg, STDDEV: $stddev (where D=-1 and R=1)]</span>";
 	PrintHiddenDiv('opinion-contributions',$color,$text); 
   
   if ($@) { 
