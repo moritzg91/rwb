@@ -216,3 +216,7 @@ font[size=+4] {
 h6 {
 	margin:3px;
 }
+
+#summary {
+	float:left;
+}

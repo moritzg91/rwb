@@ -131,6 +131,11 @@ my %PARTY_TO_COLOR = ( 	'Republican' => 1,
 						'Democrat' => -1,
 						'Undecided' => 0,
 					);
+my %CONTRIBUTIONS = (	'Individual' => (0,0),
+						'Committee' => (0,0),
+						'Opinion' => (0,0)
+					);
+my $CONTRIB_MIN_CT = 25;
 
 if (defined(param("act"))) { 
   $action=param("act");
@@ -356,7 +361,6 @@ if ($action eq "base") {
   #
   print "<div id=\"map\" style=\"width:100\%; height:80\%\"></div>";
   
-  
   #
   # And a div to populate with info about nearby stuff
   #
@@ -369,6 +373,17 @@ if ($action eq "base") {
     print "<div id=\"data\" style=\"display: none;\"></div>";
   }
 
+  # summary info
+	print h2("Contributions Summary");
+    print "<table id='summary'>";
+	print "<tr><td>Committees: </td><td id='summary-committee'>(not selected)</td></tr>";
+	print "<tr><td>Candidates: </td><td id='summary-candidate'>(not selected)</td></tr>";
+	print "<tr><td>Individuals: </td><td id='summary-individual'>(not selected)</td></tr>";
+	print "<tr><td>Opinions: </td><td id='summary-opinion'>(not selected)</td></tr></table>";
+
+	## Create HTML for filter options
+	print h2("Filtering Options");
+	BuildFilterForm();
 
 # height=1024 width=1024 id=\"info\" name=\"info\" onload=\"UpdateMap()\"></iframe>";
   
@@ -400,8 +415,6 @@ if ($action eq "base") {
     }
     print "<p><a href=\"rwb.pl?act=logout&run=1\">Logout</a></p>";
   }
-  ## Create HTML for filter options
-  BuildFilterForm();
 
 }
 
@@ -453,7 +466,9 @@ if ($action eq "near") {
 	print $str;
       }
     }
-  }
+  } else {
+		PrintHiddenDiv('committee-contributions','white','not selected'); 
+	}
   if ($what{candidates}) {
     my ($str,$error) = Candidates($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$cycles,$format);
     if (!$error) {
@@ -463,7 +478,9 @@ if ($action eq "near") {
 	print $str;
       }
     }
-  }
+  } else {
+		PrintHiddenDiv('candidate-contributions','white','not selected'); 
+	}
   if ($what{individuals}) {
     my ($str,$error) = Individuals($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$cycles,$format);
     if (!$error) {
@@ -473,7 +490,9 @@ if ($action eq "near") {
 	print $str;
       }
     }
-  }
+  } else {
+		PrintHiddenDiv('individual-contributions','white','not selected'); 
+	}
   if ($what{opinions}) {
     my ($str,$error) = Opinions($latne,$longne,$latsw,$longsw,$cyclefrom,$cycleto,$cycles,$format);
     if (!$error) {
@@ -483,7 +502,9 @@ if ($action eq "near") {
 	print $str;
       }
     }
-  }
+  } else {
+		PrintHiddenDiv('opinion-contributions','white','not selected'); 
+	}
 }
 
 if ($action eq "give-opinion-data") { 
@@ -773,13 +794,13 @@ if ($action eq "register") {
 			if ($error) {
 				print "Could not complete registration because: $error";
 			} else {
-				my $error1 = giveuserperm($username,'invite-users');
-				my $error2 = giveuserperm($username,'add-users');
-				my $error3 = giveuserperm($username,'query-fec-data');
-				my $error4 = giveuserperm($username,'query-cs-ind-data');
-				my $error5 = giveuserperm($username,'query-opinion-data');
-				my $error6 = giveuserperm($username,'give-cs-ind-data');
-				my $error7 = giveuserperm($username,'give-opinion-data');
+				my $error1 = GiveUserPerm($username,'invite-users');
+				my $error2 = GiveUserPerm($username,'add-users');
+				my $error3 = GiveUserPerm($username,'query-fec-data');
+				my $error4 = GiveUserPerm($username,'query-cs-ind-data');
+				my $error5 = GiveUserPerm($username,'query-opinion-data');
+				my $error6 = GiveUserPerm($username,'give-cs-ind-data');
+				my $error7 = GiveUserPerm($username,'give-opinion-data');
 				if ($error1) { 
 					print "Can't add a permission to user because: $error1";
 				} elsif ($error2) {
@@ -873,6 +894,44 @@ sub Committees {
     @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cmte_nm, cmte_pty_affiliation, cmte_st1, cmte_st2, cmte_city, cmte_st, cmte_zip from cs339.committee_master natural join cs339.cmte_id_to_geo where ($cycle_string) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne);
   };
   
+  my $cmte_string_rep = BuildQueryStr("cmte_pty_affiliation","or",("'REP'","'R'","'rep'","'Rep'","'GOP'"));
+  my @contrib_rep;
+  eval { @contrib_rep = ExecSQL($dbuser, $dbpasswd, "select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.comm_to_comm natural join cs339.cmte_id_to_geo)) where ($cycle_string) and ($cmte_string_rep) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+  
+  my $cmte_string_dem = BuildQueryStr("cmte_pty_affiliation","or",("'DEM'","'D'","'dem'","'Dem'"));
+  my @contrib_dem;
+  eval { @contrib_dem = ExecSQL($dbuser,$dbpasswd,"select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.comm_to_comm natural join cs339.cmte_id_to_geo)) where ($cycle_string) and ($cmte_string_dem) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+  
+  my ($rowref_1,$rowref_2) = (@contrib_rep[0],@contrib_dem[0]);
+  my $contrib_count = @{$rowref_1}[1] + @{$rowref_2}[1];
+  
+  my $count = 0;
+  while ($contrib_count < $CONTRIB_MIN_CT && $count < 10) {
+		$latne += 0.1;
+		$latsw -= 0.1;
+		$longne += 0.1;
+		$longsw -= 0.1;
+		
+		eval { @contrib_rep = ExecSQL($dbuser,$dbpasswd,"select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.comm_to_cand natural join cs339.cmte_id_to_geo)) where ($cycle_string) and ($cmte_string_rep) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+		eval { @contrib_dem = ExecSQL($dbuser,$dbpasswd,"select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.comm_to_cand natural join cs339.cmte_id_to_geo)) where ($cycle_string) and ($cmte_string_dem) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+		
+		($rowref_1,$rowref_2) = (@contrib_rep[0],@contrib_dem[0]);
+		$contrib_count = @{$rowref_1}[1] + @{$rowref_2}[1];
+		$count++;
+	}
+
+	my $rep_total = @{$rowref_1}[0];
+	my $dem_total = @{$rowref_2}[0];
+	my ($diff,$color) = ($rep_total - $dem_total, 'white');
+	if ($diff > 0) {
+		$color = 'red';
+	} elsif ($diff < 0) {
+		$color = 'blue';
+	}
+	my $text = "<span>Total Republican Contributions: $rep_total\$</span><span>Total Democrat Contributions: $dem_total\$</span>";
+	PrintHiddenDiv('committee-contributions',$color,$text); 
+  
+  
   if ($@) { 
     return (undef,$@);
   } else {
@@ -905,6 +964,43 @@ sub Candidates {
   eval { 
     @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cand_name, cand_pty_affiliation, cand_st1, cand_st2, cand_city, cand_st, cand_zip from cs339.candidate_master natural join cs339.cand_id_to_geo where ($cycle_string) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne);
   };
+  
+  my $cmte_string_rep = BuildQueryStr("cmte_pty_affiliation","or",("'REP'","'R'","'rep'","'Rep'","'GOP'"));
+  my @contrib_rep;
+  eval { @contrib_rep = ExecSQL($dbuser, $dbpasswd, "select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.comm_to_cand natural join cs339.cmte_id_to_geo)) where ($cycle_string) and ($cmte_string_rep) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+  
+  my $cmte_string_dem = BuildQueryStr("cmte_pty_affiliation","or",("'DEM'","'D'","'dem'","'Dem'"));
+  my @contrib_dem;
+  eval { @contrib_dem = ExecSQL($dbuser,$dbpasswd,"select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.comm_to_cand natural join cs339.cmte_id_to_geo)) where ($cycle_string) and ($cmte_string_dem) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+  
+  my ($rowref_1,$rowref_2) = (@contrib_rep[0],@contrib_dem[0]);
+  my $contrib_count = @{$rowref_1}[1] + @{$rowref_2}[1];
+  
+  my $count = 0;
+  while ($contrib_count < $CONTRIB_MIN_CT && $count < 10) {
+		$latne += 0.1;
+		$latsw -= 0.1;
+		$longne += 0.1;
+		$longsw -= 0.1;
+		
+		eval { @contrib_rep = ExecSQL($dbuser,$dbpasswd,"select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.comm_to_cand natural join cs339.cmte_id_to_geo)) where ($cycle_string) and ($cmte_string_rep) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+		eval { @contrib_dem = ExecSQL($dbuser,$dbpasswd,"select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.comm_to_cand natural join cs339.cmte_id_to_geo)) where ($cycle_string) and ($cmte_string_dem) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+		
+		($rowref_1,$rowref_2) = (@contrib_rep[0],@contrib_dem[0]);
+		$contrib_count = @{$rowref_1}[1] + @{$rowref_2}[1];
+		$count++;
+	}
+
+	my $rep_total = @{$rowref_1}[0];
+	my $dem_total = @{$rowref_2}[0];
+	my ($diff,$color) = ($rep_total - $dem_total, 'white');
+	if ($diff > 0) {
+		$color = 'red';
+	} elsif ($diff < 0) {
+		$color = 'blue';
+	}
+	my $text = "<span>Total Republican Contributions: $rep_total\$</span><span>Total Democrat Contributions: $dem_total\$</span>";
+	PrintHiddenDiv('candidate-contributions',$color,$text); 
   
   if ($@) { 
     return (undef,$@);
@@ -942,6 +1038,43 @@ sub Individuals {
     @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, name, city, state, zip_code, employer, transaction_amnt from cs339.individual natural join cs339.ind_to_geo where ($cycle_string) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne);
   };
   
+  my $cmte_string_rep = BuildQueryStr("cmte_pty_affiliation","or",("'REP'","'R'","'rep'","'Rep'","'GOP'"));
+  my @contrib_rep;
+  eval { @contrib_rep = ExecSQL($dbuser, $dbpasswd, "select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.individual natural join cs339.ind_to_geo)) where ($cycle_string) and ($cmte_string_rep) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+  
+  my $cmte_string_dem = BuildQueryStr("cmte_pty_affiliation","or",("'DEM'","'D'","'dem'","'Dem'"));
+  my @contrib_dem;
+  eval { @contrib_dem = ExecSQL($dbuser,$dbpasswd,"select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.individual natural join cs339.ind_to_geo)) where ($cycle_string) and ($cmte_string_dem) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+  
+  my ($rowref_1,$rowref_2) = (@contrib_rep[0],@contrib_dem[0]);
+  my $contrib_count = @{$rowref_1}[1] + @{$rowref_2}[1];
+  
+  my $count = 0;
+  while ($contrib_count < $CONTRIB_MIN_CT && $count < 10) {
+		$latne += 0.1;
+		$latsw -= 0.1;
+		$longne += 0.1;
+		$longsw -= 0.1;
+		
+		eval { @contrib_rep = ExecSQL($dbuser,$dbpasswd,"select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.individual natural join cs339.ind_to_geo)) where ($cycle_string) and ($cmte_string_rep) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+		eval { @contrib_dem = ExecSQL($dbuser,$dbpasswd,"select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.individual natural join cs339.ind_to_geo)) where ($cycle_string) and ($cmte_string_dem) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+		
+		($rowref_1,$rowref_2) = (@contrib_rep[0],@contrib_dem[0]);
+		$contrib_count = @{$rowref_1}[1] + @{$rowref_2}[1];
+		$count++;
+	}
+
+	my $rep_total = @{$rowref_1}[0];
+	my $dem_total = @{$rowref_2}[0];
+	my ($diff,$color) = ($rep_total - $dem_total, 'white');
+	if ($diff > 0) {
+		$color = 'red';
+	} elsif ($diff < 0) {
+		$color = 'blue';
+	}
+	my $text = "<span>Total Republican Contributions: $rep_total\$</span><span>Total Democrat Contributions: $dem_total\$</span>";
+	PrintHiddenDiv('individual-contributions',$color,$text); 
+  
   if ($@) { 
     return (undef,$@);
   } else {
@@ -969,6 +1102,41 @@ sub Opinions {
   eval { 
     @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, color from rwb_opinions where latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne);
   };
+
+  my @opinions_rep;
+  eval { @opinions_rep = ExecSQL($dbuser, $dbpasswd, "select sum(color), count(color) from rwb_opinions where color=-1 and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+  
+  my @opinions_dem;
+  eval { @opinions_dem = ExecSQL($dbuser,$dbpasswd,"select sum(color), count(color) from rwb_opinions where color=-1 and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+  
+  my ($rowref_1,$rowref_2) = (@opinions_rep[0],@opinions_dem[0]);
+  my $contrib_count = @{$rowref_1}[1] + @{$rowref_2}[1];
+  
+  my $count = 0;
+  while ($contrib_count < $CONTRIB_MIN_CT && $count < 10) {
+		$latne += 0.1;
+		$latsw -= 0.1;
+		$longne += 0.1;
+		$longsw -= 0.1;
+		
+		eval { @opinions_rep = ExecSQL($dbuser, $dbpasswd, "select sum(color), count(color) from rwb_opinions where color=-1 and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+		eval { @opinions_dem = ExecSQL($dbuser,$dbpasswd,"select sum(color), count(color) from rwb_opinions where color=-1 and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+		
+		($rowref_1,$rowref_2) = (@opinions_rep[0],@opinions_dem[0]);
+		$contrib_count = @{$rowref_1}[1] + @{$rowref_2}[1];
+		$count++;
+	}
+
+	my $rep_total = @{$rowref_1}[0];
+	my $dem_total = @{$rowref_2}[0];
+	my ($diff,$color) = ($rep_total - $dem_total, 'white');
+	if ($diff > 0) {
+		$color = 'red';
+	} elsif ($diff < 0) {
+		$color = 'blue';
+	}
+	my $text = "<span>Total Republican Opinions: $rep_total\$</span><span>Total Democrat Opinions: $dem_total\$</span>";
+	PrintHiddenDiv('opinion-contributions',$color,$text); 
   
   if ($@) { 
     return (undef,$@);
@@ -1440,4 +1608,9 @@ sub UserInvite {
 	# And then close it, resulting in the email being sent
 	#
 	close(MAIL);				
+}
+
+sub PrintHiddenDiv {
+	my ($id,$color,$text) = @_;
+	print "<div id='$id' color='$color' style='display:none;'>$text</div>";
 }

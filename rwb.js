@@ -57,16 +57,20 @@ function UpdateMap()
     UpdateMapById("committee_data","COMMITTEE");
     UpdateMapById("candidate_data","CANDIDATE");
     UpdateMapById("individual_data", "INDIVIDUAL");
-    //UpdateMapById("opinion_data","OPINION");
-
-
-    color.innerHTML="Ready";
+    UpdateMapById("opinion_data","OPINION");
     
-    if (Math.random()>0.5) { 
-	color.style.backgroundColor='blue';
-    } else {
-	color.style.backgroundColor='red';
-    }
+    color.innerHTML = "Ready";
+
+	$('#summary-committee').css('background-color',$('#committee-contributions').attr('color'));
+	$('#summary-candidate').css('background-color',$('#candidate-contributions').attr('color'));
+	$('#summary-individual').css('background-color',$('#individual-contributions').attr('color'));
+	$('#summary-opinion').css('background-color',$('#opinion-contributions').attr('color'));
+	
+	$('#summary-committee').html($('#committee-contributions').html());
+	$('#summary-candidate').html($('#candidate-contributions').html());
+	$('#summary-individual').html($('#individual-contributions').html());
+	$('#summary-opinion').html($('#opinion-contributions').html());
+
 
 }
 
