@@ -769,8 +769,8 @@ if ($action eq "register") {
 		 "select used from rwb_uuid where id=?",undef,$uuid);
 	};
 			
-	$rowrer = @used[0];
-	$used_num = @{$rowref}[1];
+	my $rowref = @used[0];
+	my $used_num = @{$rowref}[0];
 	
 	if ($used_num == 1) {
 		print h2('This link has already been used to register, sorry!');
