@@ -921,14 +921,16 @@ sub Committees {
 	}
 
 	my $rep_total = @{$rowref_1}[0];
+	$rep_total == '' ? ($rep_total = '0') : undef;
 	my $dem_total = @{$rowref_2}[0];
+	$dem_total == '' ? ($dem_total = '0') : undef;
 	my ($diff,$color) = ($rep_total - $dem_total, 'white');
 	if ($diff > 0) {
 		$color = 'red';
 	} elsif ($diff < 0) {
 		$color = 'blue';
 	}
-	my $text = "<span>Total Republican Contributions: $rep_total\$</span><span>Total Democrat Contributions: $dem_total\$</span>";
+	my $text = "<span>Total Republican Contributions: $rep_total\$  </span><span>Total Democrat Contributions: $dem_total\$</span>";
 	PrintHiddenDiv('committee-contributions',$color,$text); 
   
   
@@ -992,14 +994,16 @@ sub Candidates {
 	}
 
 	my $rep_total = @{$rowref_1}[0];
+	$rep_total == '' ? ($rep_total = '0') : undef;
 	my $dem_total = @{$rowref_2}[0];
+	$dem_total == '' ? ($dem_total = '0') : undef;
 	my ($diff,$color) = ($rep_total - $dem_total, 'white');
 	if ($diff > 0) {
 		$color = 'red';
 	} elsif ($diff < 0) {
 		$color = 'blue';
 	}
-	my $text = "<span>Total Republican Contributions: $rep_total\$</span><span>Total Democrat Contributions: $dem_total\$</span>";
+	my $text = "<span>Total Republican Contributions: $rep_total\$  </span><span>Total Democrat Contributions: $dem_total\$</span>";
 	PrintHiddenDiv('candidate-contributions',$color,$text); 
   
   if ($@) { 
@@ -1065,7 +1069,9 @@ sub Individuals {
 	}
 
 	my $rep_total = @{$rowref_1}[0];
+	$rep_total == '' ? ($rep_total = '0') : undef;
 	my $dem_total = @{$rowref_2}[0];
+	$dem_total == '' ? ($dem_total = '0') : undef;
 	my ($diff,$color) = ($rep_total - $dem_total, 'white');
 	if ($diff > 0) {
 		$color = 'red';
@@ -1104,7 +1110,7 @@ sub Opinions {
   };
 
   my @opinions_rep;
-  eval { @opinions_rep = ExecSQL($dbuser, $dbpasswd, "select sum(color), count(color) from rwb_opinions where color=-1 and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+  eval { @opinions_rep = ExecSQL($dbuser, $dbpasswd, "select sum(color), count(color) from rwb_opinions where color=1 and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
   
   my @opinions_dem;
   eval { @opinions_dem = ExecSQL($dbuser,$dbpasswd,"select sum(color), count(color) from rwb_opinions where color=-1 and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
@@ -1119,7 +1125,7 @@ sub Opinions {
 		$longne += 0.1;
 		$longsw -= 0.1;
 		
-		eval { @opinions_rep = ExecSQL($dbuser, $dbpasswd, "select sum(color), count(color) from rwb_opinions where color=-1 and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
+		eval { @opinions_rep = ExecSQL($dbuser, $dbpasswd, "select sum(color), count(color) from rwb_opinions where color=1 and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
 		eval { @opinions_dem = ExecSQL($dbuser,$dbpasswd,"select sum(color), count(color) from rwb_opinions where color=-1 and latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne); };
 		
 		($rowref_1,$rowref_2) = (@opinions_rep[0],@opinions_dem[0]);
@@ -1128,14 +1134,16 @@ sub Opinions {
 	}
 
 	my $rep_total = @{$rowref_1}[0];
-	my $dem_total = @{$rowref_2}[0];
+	$rep_total == '' ? ($rep_total = '0') : undef;
+	my $dem_total = -@{$rowref_2}[0];
+	$dem_total == '' ? ($dem_total = '0') : undef;
 	my ($diff,$color) = ($rep_total - $dem_total, 'white');
 	if ($diff > 0) {
 		$color = 'red';
 	} elsif ($diff < 0) {
 		$color = 'blue';
 	}
-	my $text = "<span>Total Republican Opinions: $rep_total\$</span><span>Total Democrat Opinions: $dem_total\$</span>";
+	my $text = "<span>Total Republican Opinions: $rep_total\$   </span><span>Total Democrat Opinions: $dem_total\$</span>";
 	PrintHiddenDiv('opinion-contributions',$color,$text); 
   
   if ($@) { 
@@ -1224,7 +1232,7 @@ sub UserAdd {
 # Delete a user
 # returns false on success, $error string on failure
 # 
-sub UserDel { 
+sub UserDelete { 
   eval {ExecSQL($dbuser,$dbpasswd,"delete from rwb_users where name=?", undef, @_);};
   return $@;
 }

@@ -42,3 +42,5 @@ select sum(transaction_amnt), count(transaction_amnt) from cs339.comm_to_cand na
 --http://www.techonthenet.com/oracle/functions/stddev.php
 --SQL average function found here
 --http://www.w3schools.com/sql/sql_func_avg.asp
+
+select sum(transaction_amnt), count(transaction_amnt) from (cs339.committee_master natural join (cs339.individual natural join cs339.ind_to_geo)) where (cycle=0102) and (cmte_pty_affiliation='DEM' or cmte_pty_affiliation='D') and latitude>42.0 and latitude<43.0 and longitude>-88.0 and longitude<-86.0;
