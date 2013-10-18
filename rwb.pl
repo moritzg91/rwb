@@ -782,11 +782,12 @@ if ($action eq "register") {
 						p,
 							"Username: ", textfield(-name=>'username'),
 								p,
-									"Password: ", textfield(-name=>'password'),
+									"Password: ", password_field(-name=>'password'),
 										p, 
 											hidden(-name=>'run',-default=>['1']),
 												hidden(-name=>'refer',-default=>[param('refer')]),
 												hidden(-name=>'act',-default=>['register']),
+												hidden(-name=>'uuid',-default=>[$uuid]),
 													submit, end_form, hr;
 		} else {										
 			my $username=param('username');
@@ -823,7 +824,7 @@ if ($action eq "register") {
 				}
 					###INVALIDATE UUID HERE
 				eval {ExecSQL($dbuser,$dbpasswd,
-						"update rwb_uuid set used = 1 where uuid = ?",undef,$uuid);
+						"update rwb_uuid set used = 1 where id = ?",undef,$uuid);
 				}
 			}
 		}
