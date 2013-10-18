@@ -768,8 +768,11 @@ if ($action eq "register") {
 	my @used = eval { ExecSQL($dbuser,$dbpasswd,
 		 "select used from rwb_uuid where id=?",undef,$uuid);
 	};
+			
+	$rowrer = @used[0];
+	$used_num = @{$rowref}[1];
 	
-	if ((@used[0])[0] == 1) {
+	if ($used_num == 1) {
 		print h2('This link has already been used to register, sorry!');
 	} else {
 		if(!$run) {
